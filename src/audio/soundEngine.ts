@@ -343,6 +343,63 @@ class CricketSoundEngine {
     src.stop(now + duration + 0.04);
   }
 
+  public playRunStep(stepIndex: number) {
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const out = this.getOutputNode(ctx);
+
+    // 1. Crisp running shoe-spike thud on clay/turf pitch (alternates left/right foot)
+    const stepOsc = ctx.createOscillator();
+    const stepGain = ctx.createGain();
+    stepOsc.type = 'sine';
+    const baseFreq = stepIndex % 2 === 0 ? 155 : 182;
+    stepOsc.frequency.setValueAtTime(baseFreq, now);
+    stepOsc.frequency.exponentialRampToValueAtTime(56, now + 0.055);
+    stepGain.gain.setValueAtTime(0.24, now);
+    stepGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+    stepOsc.connect(stepGain);
+    stepGain.connect(out);
+    stepOsc.start(now);
+    stepOsc.stop(now + 0.065);
+
+    // 2. Quick sandy pitch scuff / turf rustle
+    if (this.noiseBuffer) {
+      const scuff = ctx.createBufferSource();
+      scuff.buffer = this.noiseBuffer;
+
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(stepIndex % 2 === 0 ? 1250 : 1550, now);
+      bp.Q.value = 1.4;
+
+      const sGain = ctx.createGain();
+      sGain.gain.setValueAtTime(0.14, now);
+      sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+      scuff.connect(bp);
+      bp.connect(sGain);
+      sGain.connect(out);
+      scuff.start(now);
+      scuff.stop(now + 0.045);
+    }
+
+    // 3. Light energetic hustle chirp every 2nd stride
+    if (stepIndex % 2 === 0) {
+      const chirp = ctx.createOscillator();
+      const cGain = ctx.createGain();
+      chirp.type = 'triangle';
+      chirp.frequency.setValueAtTime(520, now);
+      chirp.frequency.exponentialRampToValueAtTime(740, now + 0.045);
+      cGain.gain.setValueAtTime(0.055, now);
+      cGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      chirp.connect(cGain);
+      cGain.connect(out);
+      chirp.start(now);
+      chirp.stop(now + 0.055);
+    }
+  }
+
   public playRunningAction(runs: 1 | 2 | 3) {
     const ctx = this.ensureContext();
     if (!ctx) return;

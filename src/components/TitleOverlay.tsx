@@ -20,13 +20,13 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
   const activeBest = gameMode === 'ENDLESS' ? records.bestEndless : records.bestBlitz;
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center p-4 sm:p-6 bg-slate-950/45 backdrop-blur-[2px]">
-      <div className="w-full max-w-md rounded-3xl bg-slate-950/92 border border-white/15 p-6 sm:p-8 text-white shadow-2xl">
-        <div className="text-center space-y-2">
-          <h1 className="font-display font-bold text-4xl sm:text-5xl tracking-tight text-amber-300 text-balance">
+    <div className="absolute inset-0 z-30 flex items-center justify-center p-3 sm:p-6 bg-slate-950/45 backdrop-blur-[2px]">
+      <div className="w-full max-w-md max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-3xl bg-slate-950/92 border border-white/15 p-5 sm:p-8 text-white shadow-2xl">
+        <div className="text-center space-y-1.5 sm:space-y-2">
+          <h1 className="font-display font-bold text-3xl sm:text-5xl tracking-tight text-amber-300 text-balance">
             Doodle Cricket
           </h1>
-          <p className="text-sm sm:text-base text-slate-300">
+          <p className="text-xs sm:text-base text-slate-300">
             Time your swing as the snails bowl. Clear the ropes for sixes and protect your stumps.
           </p>
         </div>

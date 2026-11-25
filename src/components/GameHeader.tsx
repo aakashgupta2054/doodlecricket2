@@ -31,30 +31,30 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
   const ballsRemaining = gameMode === 'BLITZ_12' ? Math.max(0, 12 - balls) : null;
 
   return (
-    <header className="relative z-20 w-full bg-slate-950/90 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4 sm:gap-8 text-white">
+    <header className="relative z-20 w-full bg-slate-950/90 backdrop-blur-md border-b border-white/10 px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-8 text-white">
       {/* Zone 1: Brand Wordmark */}
-      <div className="flex items-center gap-3 min-w-0">
-        <span className="font-display font-bold text-lg sm:text-xl tracking-tight text-amber-300 whitespace-nowrap shrink-0">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="font-display font-bold text-base sm:text-xl tracking-tight text-amber-300 whitespace-nowrap shrink-0">
           Doodle Cricket
         </span>
       </div>
 
       {/* Zone 2: Live Match Scoreboard (unboxed tabular numerals) */}
-      <div className="flex items-center gap-4 sm:gap-7 min-w-0">
-        <div className="flex items-baseline gap-1.5 whitespace-nowrap shrink-0">
-          <span className="text-xs font-medium text-slate-400">Runs</span>
-          <span className="font-mono-num text-xl sm:text-2xl font-bold text-white">
+      <div className="flex items-center gap-3 sm:gap-7 min-w-0">
+        <div className="flex items-baseline gap-1 sm:gap-1.5 whitespace-nowrap shrink-0">
+          <span className="text-[11px] sm:text-xs font-medium text-slate-400">Runs</span>
+          <span className="font-mono-num text-lg sm:text-2xl font-bold text-white">
             {runs}
           </span>
         </div>
 
         <span className="text-slate-600 hidden sm:inline" aria-hidden="true">·</span>
 
-        <div className="flex items-baseline gap-1.5 whitespace-nowrap shrink-0">
-          <span className="text-xs font-medium text-slate-400">
+        <div className="flex items-baseline gap-1 sm:gap-1.5 whitespace-nowrap shrink-0">
+          <span className="text-[11px] sm:text-xs font-medium text-slate-400">
             {ballsRemaining !== null ? 'Left' : 'Overs'}
           </span>
-          <span className="font-mono-num text-base sm:text-lg font-semibold text-slate-200">
+          <span className="font-mono-num text-sm sm:text-lg font-semibold text-slate-200">
             {ballsRemaining !== null ? `${ballsRemaining}b` : oversDisplay}
           </span>
         </div>

@@ -12,6 +12,7 @@ import {
   Particle,
   RenderContextState,
   ShatteredPiece,
+  getLayoutMetrics,
   projectWorld,
   renderCricketScene,
 } from '../game/renderer';
@@ -117,6 +118,9 @@ export const CricketStage: React.FC<CricketStageProps> = ({
     swingCooldown: 0,
     batterRunProgress: 0,
     batterRunTargetCount: 0,
+    isRunning: false,
+    runStepTimer: 0,
+    runStepCount: 0,
     batterCelebrateTimer: 0,
     batterSadTimer: 0,
 
@@ -148,6 +152,9 @@ export const CricketStage: React.FC<CricketStageProps> = ({
     s.swingHasHit = false;
     s.swingCooldown = 0;
     s.batterRunProgress = 0;
+    s.isRunning = false;
+    s.runStepTimer = 0;
+    s.runStepCount = 0;
     s.batterCelebrateTimer = 0;
     s.batterSadTimer = 0;
     s.stumpsIntact = true;
@@ -495,8 +502,20 @@ export const CricketStage: React.FC<CricketStageProps> = ({
 
       if (s.batterRunProgress > 0) {
         s.batterRunProgress += dt * (s.batterRunTargetCount >= 2 ? 1.35 : 1.05);
+        s.runStepTimer += dt;
+        if (s.runStepTimer >= 0.145) {
+          s.runStepTimer = 0;
+          s.runStepCount += 1;
+          if (gameStateRef.current === 'PLAYING') {
+            soundEngine.playRunStep(s.runStepCount);
+          }
+        }
         if (s.batterRunProgress >= 1) {
-          s.batterRunProgress = 0;
+          if (s.isRunning) {
+            s.batterRunProgress = 0.01;
+          } else {
+            s.batterRunProgress = 0;
+          }
         }
       }
 
@@ -541,12 +560,13 @@ export const CricketStage: React.FC<CricketStageProps> = ({
       }
 
       // Update shattered stump pieces
+      const { creaseY } = getLayoutMetrics(s.width, s.height);
       for (const sp of s.shatteredPieces) {
         sp.vy += 650 * dt;
         sp.x += sp.vx * dt;
         sp.y += sp.vy * dt;
         sp.angle += sp.vAngle * dt;
-        const groundY = s.height * 0.84;
+        const groundY = creaseY + 18;
         if (sp.y > groundY) {
           sp.y = groundY;
           sp.vy *= -0.35;
@@ -738,6 +758,16 @@ export const CricketStage: React.FC<CricketStageProps> = ({
             }
           }
 
+          // Start live running sprint + footstep audio while chasing outfield hits!
+          if (!s.isRunning && s.ballPz > 0.55 && (s.ballBouncedOutfield || s.ballVy < 1.1) && s.ballVz < 2.45) {
+            s.isRunning = true;
+            s.batterRunTargetCount = 2;
+            if (s.batterRunProgress === 0) {
+              s.batterRunProgress = 0.01;
+              s.runStepTimer = 0.12;
+            }
+          }
+
           // Fielder snails chase & attempt catches!
           for (const f of s.fielders) {
             const dx = s.ballPx - f.px;
@@ -763,6 +793,8 @@ export const CricketStage: React.FC<CricketStageProps> = ({
             ) {
               f.jumpPy = 0.26;
               f.celebrateTimer = 1.4;
+              s.isRunning = false;
+              s.batterRunProgress = 0;
               s.ballActive = false;
               s.ballPhase = 'DEAD';
               s.batterSadTimer = 1.5;
@@ -778,8 +810,12 @@ export const CricketStage: React.FC<CricketStageProps> = ({
               s.ballVx = 0;
               s.ballVz = 0;
               const scored: 1 | 2 | 3 = s.hitMaxPz > 2.0 ? 3 : s.hitMaxPz > 1.45 ? 2 : 1;
+              s.isRunning = false;
               s.batterRunTargetCount = scored;
-              s.batterRunProgress = 0.01;
+              if (s.batterRunProgress === 0) {
+                s.batterRunProgress = 0.01;
+                s.runStepTimer = 0.1;
+              }
               s.crowdExcitement = 0.72;
               s.crowdShoutTimer = 1.05;
               s.crowdShoutType = 'RUN';
@@ -805,6 +841,8 @@ export const CricketStage: React.FC<CricketStageProps> = ({
           const crossedBoundary = s.ballPz >= BOUNDARY_PZ || Math.abs(s.ballPx) >= BOUNDARY_PX;
           if (crossedBoundary) {
             s.ballPhase = 'DEAD';
+            s.isRunning = false;
+            s.batterRunProgress = 0;
             const isSix = !s.ballBouncedOutfield && s.ballPy > 0.12;
             const bProj = projectWorld(s.ballPx, Math.max(0.2, s.ballPy), Math.min(s.ballPz, BOUNDARY_PZ), s.width, s.height);
 
@@ -857,12 +895,16 @@ export const CricketStage: React.FC<CricketStageProps> = ({
           const speed = Math.hypot(s.ballVx, s.ballVz);
           if (s.ballPy <= 0.02 && speed < 0.18) {
             s.ballPhase = 'DEAD';
+            s.isRunning = false;
             const scored: 0 | 1 | 2 | 3 =
               s.hitMaxPz > 2.0 ? 3 : s.hitMaxPz > 1.45 ? 2 : s.hitMaxPz > 0.72 ? 1 : 0;
 
             if (scored === 1 || scored === 2 || scored === 3) {
               s.batterRunTargetCount = scored;
-              s.batterRunProgress = 0.01;
+              if (s.batterRunProgress === 0) {
+                s.batterRunProgress = 0.01;
+                s.runStepTimer = 0.1;
+              }
               s.crowdExcitement = 0.72;
               s.crowdShoutTimer = 1.05;
               s.crowdShoutType = 'RUN';
@@ -875,6 +917,7 @@ export const CricketStage: React.FC<CricketStageProps> = ({
                 0.9
               );
             } else {
+              s.batterRunProgress = 0;
               addCallout('DOT BALL', '#F8FAFC', '#334155', 'Solid defense', 0.8);
             }
             finishBall({
@@ -955,47 +998,49 @@ export const CricketStage: React.FC<CricketStageProps> = ({
         className="touch-canvas block w-full h-full cursor-pointer"
       />
 
-      {/* Ergonomic Tactile Touch Controls along bottom corners during active play */}
+      {/* Ergonomic Tactile Touch Controls responsive across mobile & laptop */}
       {gameState === 'PLAYING' && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 sm:bottom-6 px-4 sm:px-8 flex items-end justify-between gap-4">
-          <button
-            type="button"
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              triggerSwing(-0.65, 0.35);
-            }}
-            className="pointer-events-auto touch-canvas min-h-[54px] px-5 py-3 rounded-2xl bg-slate-900/55 hover:bg-slate-900/75 active:scale-95 backdrop-blur-sm border border-white/25 text-white font-display font-semibold text-base tracking-wide shadow-lg transition-transform whitespace-nowrap shrink-0"
-            aria-label="Pull shot"
-          >
-            Pull Shot
-          </button>
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 sm:bottom-6 px-3 sm:px-8">
+          <div className="max-w-3xl mx-auto flex items-end justify-between gap-2 sm:gap-4">
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                triggerSwing(-0.65, 0.35);
+              }}
+              className="pointer-events-auto touch-canvas min-h-[46px] sm:min-h-[54px] px-3.5 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-slate-900/60 hover:bg-slate-900/80 active:scale-95 backdrop-blur-sm border border-white/25 text-white font-display font-semibold text-xs sm:text-base tracking-wide shadow-lg transition-transform whitespace-nowrap shrink-0"
+              aria-label="Pull shot"
+            >
+              Pull Shot
+            </button>
 
-          <button
-            type="button"
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              triggerSwing(0, 0.92);
-            }}
-            className="pointer-events-auto touch-canvas min-h-[60px] px-7 py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 active:scale-95 border-2 border-amber-200 text-slate-950 font-display font-bold text-lg tracking-wide shadow-xl transition-transform whitespace-nowrap shrink-0"
-            aria-label="Loft swing for six"
-          >
-            Loft Hit
-          </button>
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                triggerSwing(0, 0.92);
+              }}
+              className="pointer-events-auto touch-canvas min-h-[50px] sm:min-h-[60px] px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-amber-400 hover:bg-amber-300 active:scale-95 border-2 border-amber-200 text-slate-950 font-display font-bold text-sm sm:text-lg tracking-wide shadow-xl transition-transform whitespace-nowrap shrink-0"
+              aria-label="Loft swing for six"
+            >
+              Loft Hit
+            </button>
 
-          <button
-            type="button"
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              triggerSwing(0.65, 0.35);
-            }}
-            className="pointer-events-auto touch-canvas min-h-[54px] px-5 py-3 rounded-2xl bg-slate-900/55 hover:bg-slate-900/75 active:scale-95 backdrop-blur-sm border border-white/25 text-white font-display font-semibold text-base tracking-wide shadow-lg transition-transform whitespace-nowrap shrink-0"
-            aria-label="Drive shot"
-          >
-            Drive Shot
-          </button>
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                triggerSwing(0.65, 0.35);
+              }}
+              className="pointer-events-auto touch-canvas min-h-[46px] sm:min-h-[54px] px-3.5 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-slate-900/60 hover:bg-slate-900/80 active:scale-95 backdrop-blur-sm border border-white/25 text-white font-display font-semibold text-xs sm:text-base tracking-wide shadow-lg transition-transform whitespace-nowrap shrink-0"
+              aria-label="Drive shot"
+            >
+              Drive Shot
+            </button>
+          </div>
         </div>
       )}
     </div>

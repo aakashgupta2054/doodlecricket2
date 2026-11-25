@@ -17,9 +17,9 @@ export const PauseOverlay: React.FC<PauseOverlayProps> = ({
   onMainMenu,
 }) => {
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-3xl bg-slate-950 border border-white/15 p-6 sm:p-7 text-white shadow-2xl text-center">
-        <h2 className="font-display font-bold text-3xl text-amber-300">Match Paused</h2>
+    <div className="absolute inset-0 z-30 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm">
+      <div className="w-full max-w-sm max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-3xl bg-slate-950 border border-white/15 p-5 sm:p-7 text-white shadow-2xl text-center">
+        <h2 className="font-display font-bold text-2xl sm:text-3xl text-amber-300">Match Paused</h2>
         <p className="mt-1.5 text-sm text-slate-300 font-mono-num">
           {runs} runs · {balls} {balls === 1 ? 'ball' : 'balls'} faced
         </p>

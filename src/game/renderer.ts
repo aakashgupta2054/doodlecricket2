@@ -103,6 +103,16 @@ export interface RenderContextState {
   crowdShoutType: 'NONE' | 'RUN' | 'FOUR' | 'SIX';
 }
 
+export function getLayoutMetrics(w: number, h: number) {
+  const isShortLandscape = h < 520;
+  const horizonY = isShortLandscape ? h * 0.30 : h * 0.33;
+  const creaseY = isShortLandscape ? h * 0.72 : h * 0.78;
+  const pitchScreenLen = creaseY - horizonY;
+  const pitchHalfWidthAtCrease = Math.max(40, Math.min(w * 0.145, h * 0.145, 96));
+  const charScale = Math.max(0.62, Math.min(1.22, Math.min(w / 820, h / 620)));
+  return { isShortLandscape, horizonY, creaseY, pitchScreenLen, pitchHalfWidthAtCrease, charScale };
+}
+
 export function projectWorld(
   px: number,
   py: number,
@@ -110,9 +120,7 @@ export function projectWorld(
   w: number,
   h: number
 ): { sx: number; sy: number; scale: number } {
-  const horizonY = h * 0.34;
-  const creaseY = h * 0.80;
-  const pitchScreenLen = creaseY - horizonY;
+  const { creaseY, pitchScreenLen, pitchHalfWidthAtCrease } = getLayoutMetrics(w, h);
 
   // Depth mapping: pz = 0 -> creaseY, pz = 1 -> horizonY + 0.14*pitchScreenLen
   // For pz > 1 (outfield), asymptotically approaches horizonY
@@ -121,7 +129,6 @@ export function projectWorld(
   const syGround = creaseY - depthNorm * (pitchScreenLen * 0.86);
 
   const scale = Math.max(0.18, 1 / (1 + Math.max(-0.25, clampedPz) * 0.95));
-  const pitchHalfWidthAtCrease = Math.min(w * 0.14, 92);
 
   const sx = w * 0.5 + px * pitchHalfWidthAtCrease * scale;
   const heightPx = py * (h * 0.15) * scale;
@@ -157,7 +164,7 @@ export function renderCricketScene(ctx: CanvasRenderingContext2D, s: RenderConte
   ctx.scale(s.cameraZoom, s.cameraZoom);
   ctx.translate(-w * 0.5 + s.cameraPanX, -h * 0.5 + s.cameraPanY);
 
-  const horizonY = h * 0.34;
+  const { horizonY } = getLayoutMetrics(w, h);
 
   // 1. Dynamic Sky Gradient (Morning -> Afternoon -> Golden Sunset -> Night Floodlights)
   let skyTop = '#4F9CF9';
@@ -371,6 +378,9 @@ export function renderCricketScene(ctx: CanvasRenderingContext2D, s: RenderConte
   }
 
   // 9. Floating Callouts (FOUR!, SIX!, PERFECT!, BOWLED!)
+  const calloutFontSize = Math.round(Math.max(24, Math.min(44, Math.min(w * 0.085, h * 0.075))));
+  const subFontSize = Math.round(Math.max(12, Math.min(17, calloutFontSize * 0.38)));
+
   for (const c of s.callouts) {
     const progress = 1 - c.life / c.maxLife;
     const alpha = progress < 0.15 ? progress / 0.15 : Math.max(0, 1 - (progress - 0.55) / 0.45);
@@ -383,8 +393,8 @@ export function renderCricketScene(ctx: CanvasRenderingContext2D, s: RenderConte
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    ctx.font = '700 42px "Fredoka", system-ui, sans-serif';
-    ctx.lineWidth = 7;
+    ctx.font = `700 ${calloutFontSize}px "Fredoka", system-ui, sans-serif`;
+    ctx.lineWidth = Math.max(4, calloutFontSize * 0.16);
     ctx.lineJoin = 'round';
     ctx.strokeStyle = c.stroke;
     ctx.strokeText(c.text, 0, 0);
@@ -392,11 +402,11 @@ export function renderCricketScene(ctx: CanvasRenderingContext2D, s: RenderConte
     ctx.fillText(c.text, 0, 0);
 
     if (c.subtext) {
-      ctx.font = '600 16px "Plus Jakarta Sans", system-ui, sans-serif';
-      ctx.lineWidth = 4;
-      ctx.strokeText(c.subtext, 0, 32);
+      ctx.font = `600 ${subFontSize}px "Plus Jakarta Sans", system-ui, sans-serif`;
+      ctx.lineWidth = Math.max(2.5, subFontSize * 0.24);
+      ctx.strokeText(c.subtext, 0, calloutFontSize * 0.78);
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(c.subtext, 0, 32);
+      ctx.fillText(c.subtext, 0, calloutFontSize * 0.78);
     }
     ctx.restore();
   }
@@ -871,7 +881,8 @@ function drawBowlerSnail(
 ) {
   const hopPy = windup > 0 ? Math.sin(windup * Math.PI) * 0.14 : Math.abs(Math.sin(time * 2.5)) * 0.015;
   const pos = projectWorld(px, hopPy, pz, w, h);
-  const sc = pos.scale * Math.min(1.25, Math.max(0.85, w / 900));
+  const { charScale } = getLayoutMetrics(w, h);
+  const sc = pos.scale * charScale;
 
   ctx.save();
   ctx.translate(pos.sx, pos.sy);
@@ -954,7 +965,8 @@ function drawFielderSnail(
 ) {
   const idleBob = f.celebrateTimer > 0 ? Math.abs(Math.sin(time * 16)) * 0.12 : 0;
   const pos = projectWorld(f.px, f.jumpPy + idleBob, f.pz, w, h);
-  const sc = pos.scale * Math.min(1.15, Math.max(0.8, w / 950));
+  const { charScale } = getLayoutMetrics(w, h);
+  const sc = pos.scale * charScale * 0.94;
 
   ctx.save();
   ctx.translate(pos.sx, pos.sy);
@@ -1011,7 +1023,8 @@ function drawBatterCricket(ctx: CanvasRenderingContext2D, s: RenderContextState,
   const celebHopPy = s.batterCelebrateTimer > 0 ? Math.abs(Math.sin(s.time * 14)) * 0.14 : 0;
 
   const pos = projectWorld(-0.56, runHopPy + celebHopPy, 0.02 + runOffsetPz, w, h);
-  const sc = pos.scale * Math.min(1.25, Math.max(0.85, w / 860));
+  const { charScale } = getLayoutMetrics(w, h);
+  const sc = pos.scale * charScale * 1.04;
 
   ctx.save();
   ctx.translate(pos.sx, pos.sy);
