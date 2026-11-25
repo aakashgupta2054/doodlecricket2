@@ -1,0 +1,6 @@
+{
+  "name": "Doodle Cricket",
+  "description": "An interactive cricket arcade game with smooth touch controls, dynamic deliveries, and synthesized stadium sound effects.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
