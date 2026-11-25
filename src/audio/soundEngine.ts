@@ -319,7 +319,7 @@ class CricketSoundEngine {
   private playHitAnticipationSwell(duration: number, peakGain: number) {
     const ctx = this.ensureContext();
     if (!ctx || !this.noiseBuffer) return;
-    const now = ctx.currentTime + 0.04;
+    const now = ctx.currentTime + 0.03;
     const out = this.getOutputNode(ctx);
 
     const src = ctx.createBufferSource();
@@ -327,13 +327,13 @@ class CricketSoundEngine {
 
     const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass';
-    bp.frequency.setValueAtTime(620, now);
-    bp.frequency.linearRampToValueAtTime(1350, now + duration);
-    bp.Q.value = 0.9;
+    bp.frequency.setValueAtTime(760, now);
+    bp.frequency.linearRampToValueAtTime(1650, now + duration);
+    bp.Q.value = 0.8;
 
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.001, now);
-    g.gain.linearRampToValueAtTime(peakGain, now + duration * 0.45);
+    g.gain.linearRampToValueAtTime(peakGain, now + duration * 0.4);
     g.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
     src.connect(bp);
@@ -341,6 +341,20 @@ class CricketSoundEngine {
     g.connect(out);
     src.start(now);
     src.stop(now + duration + 0.04);
+
+    // Sweet excited crowd "OOOH!" rise
+    const whoop = ctx.createOscillator();
+    const wGain = ctx.createGain();
+    whoop.type = 'triangle';
+    whoop.frequency.setValueAtTime(440, now);
+    whoop.frequency.exponentialRampToValueAtTime(698, now + duration * 0.75);
+    wGain.gain.setValueAtTime(0.001, now);
+    wGain.gain.linearRampToValueAtTime(peakGain * 0.35, now + duration * 0.35);
+    wGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    whoop.connect(wGain);
+    wGain.connect(out);
+    whoop.start(now);
+    whoop.stop(now + duration + 0.02);
   }
 
   public playRunStep(stepIndex: number) {
@@ -349,55 +363,54 @@ class CricketSoundEngine {
     const now = ctx.currentTime;
     const out = this.getOutputNode(ctx);
 
-    // 1. Crisp running shoe-spike thud on clay/turf pitch (alternates left/right foot)
+    // 1. Punchy running spike/shoe thud on pitch clay (alternating left/right foot)
     const stepOsc = ctx.createOscillator();
     const stepGain = ctx.createGain();
     stepOsc.type = 'sine';
-    const baseFreq = stepIndex % 2 === 0 ? 155 : 182;
+    const baseFreq = stepIndex % 2 === 0 ? 190 : 220;
     stepOsc.frequency.setValueAtTime(baseFreq, now);
-    stepOsc.frequency.exponentialRampToValueAtTime(56, now + 0.055);
-    stepGain.gain.setValueAtTime(0.24, now);
-    stepGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+    stepOsc.frequency.exponentialRampToValueAtTime(64, now + 0.065);
+    stepGain.gain.setValueAtTime(0.36, now);
+    stepGain.gain.exponentialRampToValueAtTime(0.001, now + 0.072);
     stepOsc.connect(stepGain);
     stepGain.connect(out);
     stepOsc.start(now);
-    stepOsc.stop(now + 0.065);
+    stepOsc.stop(now + 0.08);
 
-    // 2. Quick sandy pitch scuff / turf rustle
+    // 2. Crisp pitch grit / grass sprint scuff on every stride
     if (this.noiseBuffer) {
       const scuff = ctx.createBufferSource();
       scuff.buffer = this.noiseBuffer;
 
       const bp = ctx.createBiquadFilter();
       bp.type = 'bandpass';
-      bp.frequency.setValueAtTime(stepIndex % 2 === 0 ? 1250 : 1550, now);
-      bp.Q.value = 1.4;
+      bp.frequency.setValueAtTime(stepIndex % 2 === 0 ? 1450 : 1850, now);
+      bp.frequency.exponentialRampToValueAtTime(820, now + 0.06);
+      bp.Q.value = 1.1;
 
       const sGain = ctx.createGain();
-      sGain.gain.setValueAtTime(0.14, now);
-      sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      sGain.gain.setValueAtTime(0.28, now);
+      sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.068);
 
       scuff.connect(bp);
       bp.connect(sGain);
       sGain.connect(out);
       scuff.start(now);
-      scuff.stop(now + 0.045);
+      scuff.stop(now + 0.075);
     }
 
-    // 3. Light energetic hustle chirp every 2nd stride
-    if (stepIndex % 2 === 0) {
-      const chirp = ctx.createOscillator();
-      const cGain = ctx.createGain();
-      chirp.type = 'triangle';
-      chirp.frequency.setValueAtTime(520, now);
-      chirp.frequency.exponentialRampToValueAtTime(740, now + 0.045);
-      cGain.gain.setValueAtTime(0.055, now);
-      cGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-      chirp.connect(cGain);
-      cGain.connect(out);
-      chirp.start(now);
-      chirp.stop(now + 0.055);
-    }
+    // 3. Quick sneaker/stride cadence tap so running is unmistakable
+    const tap = ctx.createOscillator();
+    const tGain = ctx.createGain();
+    tap.type = 'triangle';
+    tap.frequency.setValueAtTime(stepIndex % 2 === 0 ? 580 : 660, now);
+    tap.frequency.exponentialRampToValueAtTime(340, now + 0.035);
+    tGain.gain.setValueAtTime(0.09, now);
+    tGain.gain.exponentialRampToValueAtTime(0.001, now + 0.042);
+    tap.connect(tGain);
+    tGain.connect(out);
+    tap.start(now);
+    tap.stop(now + 0.048);
   }
 
   public playRunningAction(runs: 1 | 2 | 3) {
@@ -407,41 +420,41 @@ class CricketSoundEngine {
     const out = this.getOutputNode(ctx);
 
     // 1. Upbeat rising run chime
-    const notes = runs === 3 ? [587.33, 739.99, 880] : runs === 2 ? [587.33, 783.99] : [640, 880];
+    const notes = runs === 3 ? [587.33, 739.99, 880] : runs === 2 ? [587.33, 783.99] : [659.25, 880];
     notes.forEach((freq, idx) => {
       const t = now + idx * 0.075;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(freq, t);
-      gain.gain.setValueAtTime(0.14, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+      gain.gain.setValueAtTime(0.16, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
       osc.connect(gain);
       gain.connect(out);
       osc.start(t);
-      osc.stop(t + 0.15);
+      osc.stop(t + 0.17);
     });
 
-    // 2. Rapid running footstep taps between the wickets
-    const steps = runs * 3;
+    // 2. Crisp finishing sprinting footsteps into the crease
+    const steps = runs * 2 + 1;
     for (let i = 0; i < steps; i++) {
-      const t = now + i * 0.085;
+      const t = now + i * 0.095;
       const stepOsc = ctx.createOscillator();
       const stepGain = ctx.createGain();
       stepOsc.type = 'sine';
-      stepOsc.frequency.setValueAtTime(160 + (i % 2) * 35, t);
-      stepOsc.frequency.exponentialRampToValueAtTime(65, t + 0.04);
-      stepGain.gain.setValueAtTime(0.16, t);
-      stepGain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+      stepOsc.frequency.setValueAtTime(185 + (i % 2) * 32, t);
+      stepOsc.frequency.exponentialRampToValueAtTime(64, t + 0.055);
+      stepGain.gain.setValueAtTime(0.24, t);
+      stepGain.gain.exponentialRampToValueAtTime(0.001, t + 0.062);
       stepOsc.connect(stepGain);
       stepGain.connect(out);
       stepOsc.start(t);
-      stepOsc.stop(t + 0.05);
+      stepOsc.stop(t + 0.068);
     }
 
-    // 3. Audience cheering & encouraging claps while running!
-    this.playCrowdRoarAndShout(0.75 + runs * 0.18, 0.28 + runs * 0.05, 'RUN');
-    this.playClapBurst(0.7 + runs * 0.15, 0.18, 10 + runs * 3);
+    // 3. Sweet joyful crowd cheering & applause!
+    this.playCrowdRoarAndShout(0.9 + runs * 0.22, 0.34 + runs * 0.06, 'RUN');
+    this.playClapBurst(0.85 + runs * 0.15, 0.22, 12 + runs * 3);
   }
 
   public playFourCheer() {
@@ -645,24 +658,24 @@ class CricketSoundEngine {
     const now = ctx.currentTime;
     const out = this.getOutputNode(ctx);
 
-    // Layer A: Broad loud stadium crowd roar (low body + high cheering rush)
+    // Layer A: Bright, airy, ecstatic stadium crowd cheer swell (no muddy harshness)
     const roarSrc = ctx.createBufferSource();
     roarSrc.buffer = this.noiseBuffer;
 
     const roarFilter = ctx.createBiquadFilter();
     roarFilter.type = 'bandpass';
-    roarFilter.frequency.setValueAtTime(780, now);
+    roarFilter.frequency.setValueAtTime(920, now);
     roarFilter.frequency.linearRampToValueAtTime(
-      intensity === 'SIX' ? 1800 : intensity === 'FOUR' ? 1450 : 1150,
-      now + duration * 0.22
+      intensity === 'SIX' ? 2150 : intensity === 'FOUR' ? 1780 : 1420,
+      now + duration * 0.2
     );
-    roarFilter.frequency.linearRampToValueAtTime(760, now + duration);
-    roarFilter.Q.value = 0.5;
+    roarFilter.frequency.linearRampToValueAtTime(960, now + duration);
+    roarFilter.Q.value = 0.48;
 
     const roarGain = ctx.createGain();
     roarGain.gain.setValueAtTime(0.001, now);
-    roarGain.gain.linearRampToValueAtTime(peakGain, now + 0.07);
-    roarGain.gain.setValueAtTime(peakGain * 0.9, now + duration * 0.45);
+    roarGain.gain.linearRampToValueAtTime(peakGain, now + 0.06);
+    roarGain.gain.setValueAtTime(peakGain * 0.86, now + duration * 0.42);
     roarGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
     roarSrc.connect(roarFilter);
@@ -671,51 +684,122 @@ class CricketSoundEngine {
     roarSrc.start(now);
     roarSrc.stop(now + duration + 0.05);
 
-    // Layer B: Multi-voice formant stadium shout ("YEEEAAAH!! / HOORAY!!")
+    // Layer B: Sweet, joyful, major-harmonic chorus ("YAAAY!! WOO-HOO!!") with live vibrato
     const voices =
       intensity === 'SIX'
-        ? [175, 210, 248, 288, 332, 380, 428, 475]
+        ? [392.0, 493.88, 523.25, 659.25, 783.99, 880.0, 987.77]
         : intensity === 'FOUR'
-        ? [190, 232, 276, 326, 378, 430]
-        : [215, 272, 338, 410];
+        ? [392.0, 493.88, 523.25, 659.25, 783.99]
+        : [440.0, 523.25, 659.25];
 
     const formant1 = ctx.createBiquadFilter();
     formant1.type = 'bandpass';
-    formant1.frequency.setValueAtTime(620, now);
-    formant1.frequency.linearRampToValueAtTime(980, now + 0.26);
-    formant1.frequency.linearRampToValueAtTime(700, now + duration * 0.85);
-    formant1.Q.value = 2.0;
+    formant1.frequency.setValueAtTime(760, now);
+    formant1.frequency.linearRampToValueAtTime(1060, now + 0.22);
+    formant1.frequency.linearRampToValueAtTime(840, now + duration * 0.85);
+    formant1.Q.value = 1.6;
 
     const formant2 = ctx.createBiquadFilter();
     formant2.type = 'bandpass';
-    formant2.frequency.setValueAtTime(1350, now);
-    formant2.frequency.linearRampToValueAtTime(2150, now + 0.24);
-    formant2.Q.value = 2.2;
+    formant2.frequency.setValueAtTime(1750, now);
+    formant2.frequency.linearRampToValueAtTime(2480, now + 0.24);
+    formant2.Q.value = 1.8;
 
     const shoutGain = ctx.createGain();
-    const shoutVol = intensity === 'SIX' ? 0.42 : intensity === 'FOUR' ? 0.30 : 0.16;
+    const shoutVol = intensity === 'SIX' ? 0.28 : intensity === 'FOUR' ? 0.22 : 0.13;
     shoutGain.gain.setValueAtTime(0.001, now);
     shoutGain.gain.linearRampToValueAtTime(shoutVol, now + 0.06);
-    shoutGain.gain.setValueAtTime(shoutVol * 0.88, now + duration * 0.38);
-    shoutGain.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.92);
+    shoutGain.gain.setValueAtTime(shoutVol * 0.84, now + duration * 0.35);
+    shoutGain.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.9);
 
     formant1.connect(shoutGain);
     formant2.connect(shoutGain);
     shoutGain.connect(out);
 
+    // Shared sweet vibrato LFO so voices shimmer with ecstatic happiness
+    const vibLfo = ctx.createOscillator();
+    const vibDepth = ctx.createGain();
+    vibLfo.type = 'sine';
+    vibLfo.frequency.setValueAtTime(6.8, now);
+    vibDepth.gain.setValueAtTime(11, now);
+    vibLfo.connect(vibDepth);
+    vibLfo.start(now);
+    vibLfo.stop(now + duration);
+
     voices.forEach((baseFreq, i) => {
       const osc = ctx.createOscillator();
-      osc.type = i % 2 === 0 ? 'sawtooth' : 'triangle';
-      const pitchRise = intensity === 'SIX' ? 1.28 : intensity === 'FOUR' ? 1.18 : 1.12;
-      const stagger = (i % 3) * 0.015;
-      osc.frequency.setValueAtTime(baseFreq, now + stagger);
-      osc.frequency.linearRampToValueAtTime(baseFreq * pitchRise, now + 0.2 + stagger);
-      osc.frequency.linearRampToValueAtTime(baseFreq * 0.95, now + duration * 0.86);
+      // Sweet warm triangle & sine tones (no harsh low buzz)
+      osc.type = i % 2 === 0 ? 'triangle' : 'sine';
+      const pitchRise = intensity === 'SIX' ? 1.26 : intensity === 'FOUR' ? 1.18 : 1.12;
+      const stagger = (i % 3) * 0.025;
+      osc.frequency.setValueAtTime(baseFreq * 0.92, now + stagger);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * pitchRise, now + 0.19 + stagger);
+      osc.frequency.linearRampToValueAtTime(baseFreq * 1.04, now + duration * 0.85);
+      vibDepth.connect(osc.frequency);
       osc.connect(formant1);
       osc.connect(formant2);
       osc.start(now + stagger);
-      osc.stop(now + duration * 0.94);
+      osc.stop(now + duration * 0.92);
     });
+
+    // Layer C: Staggered sweet ecstatic fan whoops ("WOO-HOO!! / YAAAY!!") going wild with joy
+    const whoopCount = intensity === 'SIX' ? 7 : intensity === 'FOUR' ? 4 : 2;
+    const whoopScale = [523.25, 587.33, 659.25, 783.99, 880.0];
+    for (let w = 0; w < whoopCount; w++) {
+      const t = now + 0.04 + w * (duration * 0.72 / whoopCount) + Math.random() * 0.04;
+      const startF = whoopScale[w % whoopScale.length];
+      const peakF = startF * (1.42 + (w % 2) * 0.16);
+      const wDur = 0.28 + Math.random() * 0.14;
+
+      const wOsc = ctx.createOscillator();
+      const wGain = ctx.createGain();
+      wOsc.type = w % 2 === 0 ? 'sine' : 'triangle';
+
+      wOsc.frequency.setValueAtTime(startF, t);
+      wOsc.frequency.exponentialRampToValueAtTime(peakF, t + wDur * 0.45);
+      wOsc.frequency.exponentialRampToValueAtTime(peakF * 0.86, t + wDur);
+
+      const wPeak = intensity === 'SIX' ? 0.11 : intensity === 'FOUR' ? 0.085 : 0.06;
+      wGain.gain.setValueAtTime(0.001, t);
+      wGain.gain.linearRampToValueAtTime(wPeak, t + 0.045);
+      wGain.gain.exponentialRampToValueAtTime(0.001, t + wDur);
+
+      wOsc.connect(wGain);
+      wGain.connect(out);
+      wOsc.start(t);
+      wOsc.stop(t + wDur + 0.02);
+    }
+
+    // Layer D: Happy celebration trill whistle for SIX (pure euphoria!)
+    if (intensity === 'SIX') {
+      const wt = now + 0.14;
+      const whistle = ctx.createOscillator();
+      const wTrill = ctx.createOscillator();
+      const wTrillGain = ctx.createGain();
+      const wOutGain = ctx.createGain();
+
+      whistle.type = 'sine';
+      whistle.frequency.setValueAtTime(2250, wt);
+      whistle.frequency.linearRampToValueAtTime(2550, wt + 0.18);
+      whistle.frequency.linearRampToValueAtTime(2350, wt + 0.42);
+
+      wTrill.type = 'sine';
+      wTrill.frequency.setValueAtTime(24, wt);
+      wTrillGain.gain.setValueAtTime(110, wt);
+      wTrill.connect(wTrillGain);
+      wTrillGain.connect(whistle.frequency);
+
+      wOutGain.gain.setValueAtTime(0.001, wt);
+      wOutGain.gain.linearRampToValueAtTime(0.065, wt + 0.04);
+      wOutGain.gain.exponentialRampToValueAtTime(0.001, wt + 0.45);
+
+      whistle.connect(wOutGain);
+      wOutGain.connect(out);
+      wTrill.start(wt);
+      whistle.start(wt);
+      wTrill.stop(wt + 0.48);
+      whistle.stop(wt + 0.48);
+    }
   }
 
   private playClapBurst(duration: number, peakGain: number, count: number) {

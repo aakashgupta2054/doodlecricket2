@@ -525,9 +525,9 @@ export const CricketStage: React.FC<CricketStageProps> = ({
       s.swingCooldown = Math.max(0, s.swingCooldown - dt);
 
       if (s.batterRunProgress > 0) {
-        s.batterRunProgress += dt * (s.batterRunTargetCount >= 2 ? 1.35 : 1.05);
+        s.batterRunProgress += dt * (s.batterRunTargetCount >= 2 ? 1.4 : 1.15);
         s.runStepTimer += dt;
-        if (s.runStepTimer >= 0.145) {
+        if (s.runStepTimer >= 0.125) {
           s.runStepTimer = 0;
           s.runStepCount += 1;
           if (gameStateRef.current === 'PLAYING') {
@@ -791,12 +791,14 @@ export const CricketStage: React.FC<CricketStageProps> = ({
 
           // Start live running sprint + footstep audio while chasing hits in any direction!
           const flatSpeed = Math.hypot(s.ballVx, s.ballVz);
-          if (!s.isRunning && radialDist > 0.55 && (s.ballBouncedOutfield || s.ballVy < 1.1) && flatSpeed < 2.6) {
+          if (!s.isRunning && radialDist > 0.38 && (s.ballBouncedOutfield || s.ballVy < 1.35) && flatSpeed < 3.2) {
             s.isRunning = true;
             s.batterRunTargetCount = 2;
             if (s.batterRunProgress === 0) {
               s.batterRunProgress = 0.01;
-              s.runStepTimer = 0.12;
+              s.runStepTimer = 0;
+              s.runStepCount += 1;
+              soundEngine.playRunStep(s.runStepCount);
             }
           }
 
