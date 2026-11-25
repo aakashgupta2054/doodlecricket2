@@ -333,8 +333,9 @@ export function renderCricketScene(ctx: CanvasRenderingContext2D, s: RenderConte
   // Far stumps (bowler's end)
   drawStumps(ctx, w, h, 1.05, true, []);
 
-  // 4. Fielder Snails in Outfield
-  for (const f of s.fielders) {
+  // 4. Fielder Snails around all sides of pitch (depth-sorted back-to-front)
+  const sortedFielders = [...s.fielders].sort((a, b) => b.pz - a.pz);
+  for (const f of sortedFielders) {
     drawFielderSnail(ctx, f, w, h, s.time);
   }
 

@@ -74,7 +74,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
           </div>
           <div className="flex items-center justify-between gap-4">
             <span className="text-slate-400">Keyboard</span>
-            <span className="font-mono-num text-xs text-right text-slate-100">Space · Up · Left / Right</span>
+            <span className="font-mono-num text-xs text-right text-slate-100">Space · Arrows / WASD (360°)</span>
           </div>
         </div>
 

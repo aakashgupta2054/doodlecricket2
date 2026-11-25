@@ -28,14 +28,26 @@ interface CricketStageProps {
 
 const GRAVITY = 3.6;
 const BOUNDARY_PZ = 2.65;
-const BOUNDARY_PX = 4.6;
+const BOUNDARY_BACK_PZ = -0.36;
+
+function getSideBoundaryPx(pz: number): number {
+  return 4.35 + Math.max(0, pz) * 0.8;
+}
 
 function createInitialFielders(): FielderSnail[] {
   return [
-    { id: 0, basePx: -2.2, basePz: 1.55, px: -2.2, pz: 1.55, capColor: '#EF4444', shellColor: '#D97706', jumpPy: 0, celebrateTimer: 0 },
-    { id: 1, basePx: 2.2, basePz: 1.55, px: 2.2, pz: 1.55, capColor: '#EF4444', shellColor: '#EA580C', jumpPy: 0, celebrateTimer: 0 },
-    { id: 2, basePx: -1.15, basePz: 2.15, px: -1.15, pz: 2.15, capColor: '#DC2626', shellColor: '#B45309', jumpPy: 0, celebrateTimer: 0 },
-    { id: 3, basePx: 1.15, basePz: 2.15, px: 1.15, pz: 2.15, capColor: '#DC2626', shellColor: '#C2410C', jumpPy: 0, celebrateTimer: 0 },
+    // Spread organically at varied depths & angles around the 360° ground (no straight lines)
+    { id: 0, basePx: -2.35, basePz: -0.16, px: -2.35, pz: -0.16, capColor: '#DC2626', shellColor: '#EA580C', jumpPy: 0, celebrateTimer: 0 },
+    { id: 1, basePx: 2.45, basePz: -0.10, px: 2.45, pz: -0.10, capColor: '#DC2626', shellColor: '#D97706', jumpPy: 0, celebrateTimer: 0 },
+    { id: 2, basePx: -3.75, basePz: 0.52, px: -3.75, pz: 0.52, capColor: '#EF4444', shellColor: '#B45309', jumpPy: 0, celebrateTimer: 0 },
+    { id: 3, basePx: 3.85, basePz: 0.38, px: 3.85, pz: 0.38, capColor: '#EF4444', shellColor: '#C2410C', jumpPy: 0, celebrateTimer: 0 },
+    { id: 4, basePx: -2.05, basePz: 1.18, px: -2.05, pz: 1.18, capColor: '#EF4444', shellColor: '#D97706', jumpPy: 0, celebrateTimer: 0 },
+    { id: 5, basePx: 2.25, basePz: 1.06, px: 2.25, pz: 1.06, capColor: '#EF4444', shellColor: '#EA580C', jumpPy: 0, celebrateTimer: 0 },
+    // Boundary line fielders positioned right along the curved white boundary rope
+    { id: 6, basePx: -1.25, basePz: 2.04, px: -1.25, pz: 2.04, capColor: '#DC2626', shellColor: '#B45309', jumpPy: 0, celebrateTimer: 0 },
+    { id: 7, basePx: 1.45, basePz: 2.00, px: 1.45, pz: 2.00, capColor: '#DC2626', shellColor: '#C2410C', jumpPy: 0, celebrateTimer: 0 },
+    { id: 8, basePx: -5.35, basePz: 1.88, px: -5.35, pz: 1.88, capColor: '#DC2626', shellColor: '#B45309', jumpPy: 0, celebrateTimer: 0 },
+    { id: 9, basePx: 5.45, basePz: 1.84, px: 5.45, pz: 1.84, capColor: '#DC2626', shellColor: '#D97706', jumpPy: 0, celebrateTimer: 0 },
   ];
 }
 
@@ -235,12 +247,12 @@ export const CricketStage: React.FC<CricketStageProps> = ({
 
     s.swingPhase = 'SWINGING';
     s.swingProgress = 0;
-    s.swingAim = Math.max(-1, Math.min(1, aimOffset));
+    s.swingAim = Math.max(-2.2, Math.min(2.2, aimOffset));
     s.swingLoft = Math.max(0.15, Math.min(1, loftBoost));
     s.swingHasHit = false;
   }, []);
 
-  // Keyboard support (Space, Enter, Arrow keys, W/A/D)
+  // Keyboard support (Space, Enter, Arrow keys, W/A/S/D)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (gameStateRef.current !== 'PLAYING') return;
@@ -251,23 +263,24 @@ export const CricketStage: React.FC<CricketStageProps> = ({
         triggerSwing(0, 0.58);
       } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
         e.preventDefault();
-        triggerSwing(0, 0.92);
+        triggerSwing(0, 0.94);
       } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         e.preventDefault();
-        triggerSwing(-0.75, 0.55);
+        triggerSwing(-1.25, 0.58);
       } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
         e.preventDefault();
-        triggerSwing(0.75, 0.55);
+        triggerSwing(1.25, 0.58);
       } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
         e.preventDefault();
-        triggerSwing(0, 0.25);
+        // Late glance / scoop behind the wicket (alternates fine leg / third man)
+        triggerSwing(Math.random() < 0.5 ? -1.95 : 1.95, 0.45);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [triggerSwing]);
 
-  // Smooth touch & pointer gesture tracking on the canvas
+  // Smooth 360-degree touch & pointer gesture tracking on the canvas
   const pointerStartRef = useRef<{ x: number; y: number; active: boolean; swiped: boolean }>({
     x: 0,
     y: 0,
@@ -281,9 +294,19 @@ export const CricketStage: React.FC<CricketStageProps> = ({
     soundEngine.unlock();
 
     const rect = e.currentTarget.getBoundingClientRect();
+    const { creaseY } = getLayoutMetrics(rect.width, rect.height);
+    const dx = e.clientX - (rect.left + rect.width * 0.5);
+    const dy = (rect.top + creaseY) - e.clientY;
     const relX = (e.clientX - rect.left) / Math.max(1, rect.width);
-    // Gentle directional bias from tap position: left=leg (-0.65), center=0, right=off (+0.65)
-    const tapAim = Math.abs(relX - 0.5) < 0.14 ? 0 : (relX - 0.5) * 1.45;
+
+    // 360-degree tap placement relative to batter crease: straight, cover, point, square leg, fine leg, third man!
+    let tapAngle = 0;
+    if (Math.abs(relX - 0.5) < 0.11 && dy > 20) {
+      tapAngle = 0;
+    } else {
+      tapAngle = Math.atan2(dx, Math.max(-rect.height * 0.25, dy));
+      tapAngle = Math.max(-2.15, Math.min(2.15, tapAngle * 1.15));
+    }
 
     pointerStartRef.current = {
       x: e.clientX,
@@ -293,7 +316,7 @@ export const CricketStage: React.FC<CricketStageProps> = ({
     };
 
     // Instant zero-latency swing on pointerdown!
-    triggerSwing(tapAim, 0.55);
+    triggerSwing(tapAngle, 0.56);
   };
 
   const handleCanvasPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -303,12 +326,13 @@ export const CricketStage: React.FC<CricketStageProps> = ({
     const dy = e.clientY - p.y;
     const dist = Math.hypot(dx, dy);
 
-    // If user drags fast during early swing, dynamically refine aim & loft before ball contact!
-    if (dist > 18) {
+    // If user swipes in ANY direction during early swing, aim the shot right along that vector!
+    if (dist > 16) {
       p.swiped = true;
       const s = simRef.current;
       if (s.swingPhase === 'SWINGING' && !s.swingHasHit) {
-        s.swingAim = Math.max(-1, Math.min(1, dx / 70));
+        const swipeAngle = Math.atan2(dx, -dy);
+        s.swingAim = Math.max(-2.2, Math.min(2.2, swipeAngle));
         if (dy < -16) {
           s.swingLoft = Math.min(1, 0.65 + Math.abs(dy) / 110);
         }
@@ -519,14 +543,15 @@ export const CricketStage: React.FC<CricketStageProps> = ({
         }
       }
 
-      // Smooth camera zoom/pan reset when not tracking a big hit
+      // Smooth camera zoom/pan reset when not tracking a big hit (supports 360° shots)
       let targetZoom = 1;
       let targetPanX = 0;
       let targetPanY = 0;
-      if (s.ballPhase === 'HIT_FLIGHT' && s.ballPz > 0.8) {
-        targetZoom = 1.04;
-        targetPanX = -s.ballPx * 14;
-        targetPanY = Math.min(28, s.ballPy * 10);
+      const radialCamDist = Math.hypot(s.ballPx * 0.55, s.ballPz);
+      if (s.ballPhase === 'HIT_FLIGHT' && radialCamDist > 0.75) {
+        targetZoom = 1.035;
+        targetPanX = Math.max(-42, Math.min(42, -s.ballPx * 14));
+        targetPanY = Math.max(-24, Math.min(28, s.ballPy * 10 - (s.ballPz < 0 ? 14 : 0)));
       }
       s.cameraZoom += (targetZoom - s.cameraZoom) * Math.min(1, dt * 5);
       s.cameraPanX += (targetPanX - s.cameraPanX) * Math.min(1, dt * 5);
@@ -673,9 +698,9 @@ export const CricketStage: React.FC<CricketStageProps> = ({
             s.ballBouncedOutfield = false;
             s.hitMaxPz = s.ballPz;
 
-            // Compute exit velocity vector
-            const timingAngle = (0.08 - s.ballPz) * 3.8; // early pulls left, late cuts right
-            const combinedAim = Math.max(-1.15, Math.min(1.15, s.swingAim * 0.72 + timingAngle * 0.55));
+            // Compute 360-degree exit velocity vector!
+            const timingAngle = (0.08 - s.ballPz) * 5.2; // early pulls wide leg, late cuts wide off/third man
+            const shotAngle = Math.max(-2.25, Math.min(2.25, s.swingAim + timingAngle * 0.45));
             const hitProj = projectWorld(s.ballPx, s.ballPy, s.ballPz, s.width, s.height);
 
             if (quality === 'PERFECT') {
@@ -684,33 +709,36 @@ export const CricketStage: React.FC<CricketStageProps> = ({
               s.crowdExcitement = 0.65;
               spawnParticles(hitProj.sx, hitProj.sy, 16, ['#FEF08A', '#FFFFFF', '#F59E0B'], 190, 'circle', 220);
 
-              const power = 2.95 + Math.random() * 0.35;
-              s.ballVz = power * (0.9 + (1 - Math.abs(combinedAim)) * 0.16);
-              s.ballVx = combinedAim * 2.15;
-              s.ballVy = 1.65 + s.swingLoft * 1.45; // High soaring arc or scorching drive!
+              const speed = 3.15 + Math.random() * 0.35;
+              s.ballVx = Math.sin(shotAngle) * speed * 1.45;
+              s.ballVz = Math.cos(shotAngle) * speed * (shotAngle > 1.6 || shotAngle < -1.6 ? 0.55 : 0.95);
+              s.ballVy = 1.65 + s.swingLoft * 1.45;
             } else if (quality === 'GOOD') {
               soundEngine.playBatHit('GOOD');
               s.shakeAmount = 0.25;
               spawnParticles(hitProj.sx, hitProj.sy, 10, ['#FEF3C7', '#FFFFFF'], 130, 'circle', 200);
 
-              const power = 2.05 + Math.random() * 0.35;
-              s.ballVz = power;
-              s.ballVx = combinedAim * 1.85;
+              const speed = 2.25 + Math.random() * 0.35;
+              s.ballVx = Math.sin(shotAngle) * speed * 1.4;
+              s.ballVz = Math.cos(shotAngle) * speed * (shotAngle > 1.6 || shotAngle < -1.6 ? 0.5 : 0.95);
               s.ballVy = 0.85 + s.swingLoft * 0.95;
             } else if (quality === 'EARLY' || quality === 'LATE') {
               soundEngine.playBatHit('EDGE');
               spawnParticles(hitProj.sx, hitProj.sy, 6, ['#E2E8F0', '#FDE68A'], 95, 'circle', 180);
 
-              const power = 1.25 + Math.random() * 0.35;
-              s.ballVz = power;
-              s.ballVx = combinedAim * 1.45 + (Math.random() - 0.5) * 0.4;
+              const speed = 1.45 + Math.random() * 0.35;
+              const jitterAngle = shotAngle + (Math.random() - 0.5) * 0.45;
+              s.ballVx = Math.sin(jitterAngle) * speed * 1.35;
+              s.ballVz = Math.cos(jitterAngle) * speed * 0.9;
               s.ballVy = 0.65 + s.swingLoft * 0.95;
             } else {
-              // Edge
+              // Edge — flies sharp behind/square toward third man or fine leg!
               soundEngine.playBatHit('EDGE');
-              s.ballVz = 0.82;
-              s.ballVx = (Math.random() < 0.5 ? -1 : 1) * (0.85 + Math.random() * 0.5);
-              s.ballVy = 1.15;
+              const edgeAngle = (Math.random() < 0.5 ? -1 : 1) * (1.45 + Math.random() * 0.65);
+              const speed = 1.45 + Math.random() * 0.45;
+              s.ballVx = Math.sin(edgeAngle) * speed * 1.3;
+              s.ballVz = Math.cos(edgeAngle) * speed * 0.5;
+              s.ballVy = 1.1;
             }
           }
 
@@ -739,14 +767,17 @@ export const CricketStage: React.FC<CricketStageProps> = ({
           s.ballPx += s.ballVx * dt;
           s.ballPy += s.ballVy * dt;
           s.ballPz += s.ballVz * dt;
-          s.hitMaxPz = Math.max(s.hitMaxPz, s.ballPz);
+
+          // Track farthest radial distance hit (works in all 360 directions!)
+          const radialDist = Math.hypot(s.ballPx * 0.62, s.ballPz);
+          s.hitMaxPz = Math.max(s.hitMaxPz, radialDist);
 
           // Ground bounce / grass friction
           if (s.ballPy <= 0) {
             s.ballPy = 0;
             if (Math.abs(s.ballVy) > 0.35) {
               s.ballVy = -s.ballVy * 0.46;
-              if (s.ballPz > 0.45) {
+              if (radialDist > 0.45) {
                 s.ballBouncedOutfield = true;
               }
               soundEngine.playPitchBounce();
@@ -758,8 +789,9 @@ export const CricketStage: React.FC<CricketStageProps> = ({
             }
           }
 
-          // Start live running sprint + footstep audio while chasing outfield hits!
-          if (!s.isRunning && s.ballPz > 0.55 && (s.ballBouncedOutfield || s.ballVy < 1.1) && s.ballVz < 2.45) {
+          // Start live running sprint + footstep audio while chasing hits in any direction!
+          const flatSpeed = Math.hypot(s.ballVx, s.ballVz);
+          if (!s.isRunning && radialDist > 0.55 && (s.ballBouncedOutfield || s.ballVy < 1.1) && flatSpeed < 2.6) {
             s.isRunning = true;
             s.batterRunTargetCount = 2;
             if (s.batterRunProgress === 0) {
@@ -768,15 +800,15 @@ export const CricketStage: React.FC<CricketStageProps> = ({
             }
           }
 
-          // Fielder snails chase & attempt catches!
+          // Nearby fielder snails chase & attempt catches while others hold their spread positions
           for (const f of s.fielders) {
             const dx = s.ballPx - f.px;
             const dz = s.ballPz - f.pz;
             const dist = Math.hypot(dx, dz);
 
-            // Chase speed
-            if (dist > 0.05 && s.ballPz > 0.6) {
-              const chaseSpeed = 0.85;
+            // Only fielders within reasonable range sprint to the ball so the field stays spread out
+            if (dist > 0.05 && dist < 2.25 && radialDist > 0.45) {
+              const chaseSpeed = 0.96;
               f.px += (dx / dist) * chaseSpeed * dt;
               f.pz += (dz / dist) * chaseSpeed * dt;
             }
@@ -785,11 +817,11 @@ export const CricketStage: React.FC<CricketStageProps> = ({
             if (
               !s.ballBouncedOutfield &&
               s.hitQuality !== 'PERFECT' &&
-              s.ballPz > 0.95 &&
+              radialDist > 0.72 &&
               s.ballPy > 0.06 &&
-              s.ballPy < 0.72 &&
+              s.ballPy < 0.74 &&
               dist < 0.28 &&
-              s.ballVz < 2.2
+              flatSpeed < 2.4
             ) {
               f.jumpPy = 0.26;
               f.celebrateTimer = 1.4;
@@ -805,11 +837,11 @@ export const CricketStage: React.FC<CricketStageProps> = ({
             }
 
             // Ground interception
-            if (s.ballPy <= 0.18 && s.ballPz > 0.85 && dist < 0.24 && s.ballVz < 2.15) {
+            if (s.ballPy <= 0.18 && radialDist > 0.65 && dist < 0.25 && flatSpeed < 2.3) {
               s.ballPhase = 'DEAD';
               s.ballVx = 0;
               s.ballVz = 0;
-              const scored: 1 | 2 | 3 = s.hitMaxPz > 2.0 ? 3 : s.hitMaxPz > 1.45 ? 2 : 1;
+              const scored: 1 | 2 | 3 = s.hitMaxPz > 2.0 ? 3 : s.hitMaxPz > 1.35 ? 2 : 1;
               s.isRunning = false;
               s.batterRunTargetCount = scored;
               if (s.batterRunProgress === 0) {
@@ -837,14 +869,20 @@ export const CricketStage: React.FC<CricketStageProps> = ({
             }
           }
 
-          // Boundary Check! (FOUR or SIX)
-          const crossedBoundary = s.ballPz >= BOUNDARY_PZ || Math.abs(s.ballPx) >= BOUNDARY_PX;
+          // 360-degree Boundary Check! (Front, Left/Right Square, or Fine Leg/Third Man behind)
+          const sideBoundary = getSideBoundaryPx(s.ballPz);
+          const crossedBoundary =
+            s.ballPz >= BOUNDARY_PZ ||
+            s.ballPz <= BOUNDARY_BACK_PZ ||
+            Math.abs(s.ballPx) >= sideBoundary;
           if (crossedBoundary) {
             s.ballPhase = 'DEAD';
             s.isRunning = false;
             s.batterRunProgress = 0;
             const isSix = !s.ballBouncedOutfield && s.ballPy > 0.12;
-            const bProj = projectWorld(s.ballPx, Math.max(0.2, s.ballPy), Math.min(s.ballPz, BOUNDARY_PZ), s.width, s.height);
+            const clampedPx = Math.max(-sideBoundary, Math.min(sideBoundary, s.ballPx));
+            const clampedPz = Math.max(BOUNDARY_BACK_PZ, Math.min(BOUNDARY_PZ, s.ballPz));
+            const bProj = projectWorld(clampedPx, Math.max(0.2, s.ballPy), clampedPz, s.width, s.height);
 
             if (isSix) {
               s.crowdExcitement = 1.0;
@@ -1007,7 +1045,7 @@ export const CricketStage: React.FC<CricketStageProps> = ({
               onPointerDown={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                triggerSwing(-0.65, 0.35);
+                triggerSwing(-1.25, 0.45);
               }}
               className="pointer-events-auto touch-canvas min-h-[46px] sm:min-h-[54px] px-3.5 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-slate-900/60 hover:bg-slate-900/80 active:scale-95 backdrop-blur-sm border border-white/25 text-white font-display font-semibold text-xs sm:text-base tracking-wide shadow-lg transition-transform whitespace-nowrap shrink-0"
               aria-label="Pull shot"
@@ -1020,7 +1058,7 @@ export const CricketStage: React.FC<CricketStageProps> = ({
               onPointerDown={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                triggerSwing(0, 0.92);
+                triggerSwing(0, 0.94);
               }}
               className="pointer-events-auto touch-canvas min-h-[50px] sm:min-h-[60px] px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-amber-400 hover:bg-amber-300 active:scale-95 border-2 border-amber-200 text-slate-950 font-display font-bold text-sm sm:text-lg tracking-wide shadow-xl transition-transform whitespace-nowrap shrink-0"
               aria-label="Loft swing for six"
@@ -1033,7 +1071,7 @@ export const CricketStage: React.FC<CricketStageProps> = ({
               onPointerDown={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                triggerSwing(0.65, 0.35);
+                triggerSwing(1.25, 0.45);
               }}
               className="pointer-events-auto touch-canvas min-h-[46px] sm:min-h-[54px] px-3.5 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-slate-900/60 hover:bg-slate-900/80 active:scale-95 backdrop-blur-sm border border-white/25 text-white font-display font-semibold text-xs sm:text-base tracking-wide shadow-lg transition-transform whitespace-nowrap shrink-0"
               aria-label="Drive shot"
