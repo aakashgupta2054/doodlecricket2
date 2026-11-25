@@ -546,40 +546,164 @@ function drawStadiumBackdrop(
     ctx.fillRect(-50, rowY, w + 100, (standHeight - 16) / tierCount + 2);
   }
 
-  // Front stadium boundary wall & LED-style perimeter board
+  // Front stadium boundary wall & LED-style perimeter board with cricket graphics
   ctx.fillStyle = nightFactor > 0.5 ? '#0F172A' : '#1E293B';
-  ctx.fillRect(-50, horizonY - 12, w + 100, 14);
+  ctx.fillRect(-50, horizonY - 13, w + 100, 15);
   ctx.fillStyle = isShouting
     ? shoutType === 'SIX'
       ? '#FACC15'
       : '#38BDF8'
     : '#10B981';
-  ctx.fillRect(-50, horizonY - 11, w + 100, 4);
+  ctx.fillRect(-50, horizonY - 12, w + 100, 3.5);
 
-  // 3. Center Sight Screen & Pavilion behind Bowler (keeps red ball super visible)
-  const sightW = Math.min(110, w * 0.14);
-  const sightH = standHeight * 0.62;
+  // Repeating cricket-themed print along the perimeter board
+  ctx.save();
+  ctx.font = '800 7.5px "JetBrains Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const slogans = ['SIXER ZONE', '4 • 6', 'CLEAN HIT', 'STADIUM CUP'];
+  const stepX = 118;
+  for (let bx = 30, i = 0; bx < w - 20; bx += stepX, i++) {
+    if (Math.abs(bx - w * 0.5) < 82) continue;
+    ctx.fillStyle = isShouting ? '#FEF08A' : 'rgba(248, 250, 252, 0.78)';
+    ctx.fillText(slogans[i % slogans.length], bx, horizonY - 4.5);
+    // Tiny red cricket ball accent beside slogan
+    ctx.fillStyle = '#EF4444';
+    ctx.beginPath();
+    ctx.arc(bx + 44, horizonY - 4.5, 2.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 3. Center Sight Screen Board with Cricket Crest Print behind Bowler
+  const sightW = Math.max(84, Math.min(144, w * 0.22));
+  const sightH = Math.max(46, standHeight * 0.68);
   const sightX = w * 0.5 - sightW * 0.5;
   const sightY = horizonY - sightH - 10;
-  ctx.fillStyle = nightFactor > 0.5 ? '#CBD5E1' : '#F8FAFC';
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 2;
+
+  ctx.save();
+  // Board frame & bright ivory backdrop (keeps red bowled ball crisp and visible)
+  ctx.fillStyle = nightFactor > 0.5 ? '#E2E8F0' : '#FFFFFF';
+  ctx.strokeStyle = '#1E293B';
+  ctx.lineWidth = 2.4;
   ctx.beginPath();
-  ctx.roundRect(sightX, sightY, sightW, sightH, 4);
+  ctx.roundRect(sightX, sightY, sightW, sightH, 5);
   ctx.fill();
   ctx.stroke();
 
-  // Subtle scoreboard header on sight screen
-  ctx.fillStyle = '#0F172A';
-  ctx.fillRect(sightX + 8, sightY + 5, sightW - 16, 10);
-  ctx.fillStyle = isShouting ? '#FACC15' : '#4ADE80';
-  ctx.font = '700 8px "JetBrains Mono", monospace';
+  // Clip inside board for crisp print artwork
+  ctx.beginPath();
+  ctx.roundRect(sightX + 1.5, sightY + 1.5, sightW - 3, sightH - 3, 4);
+  ctx.clip();
+
+  // Top emerald & gold stadium header bar
+  const headerH = Math.max(12, sightH * 0.23);
+  ctx.fillStyle = isShouting ? '#B45309' : '#065F46';
+  ctx.fillRect(sightX, sightY, sightW, headerH);
+  ctx.fillStyle = '#FACC15';
+  ctx.fillRect(sightX, sightY + headerH - 2, sightW, 2);
+
+  // Bottom green turf stripe accent
+  ctx.fillStyle = '#10B981';
+  ctx.fillRect(sightX, sightY + sightH - 5, sightW, 5);
+
+  // Header text
+  ctx.fillStyle = isShouting ? '#FEF08A' : '#FFFFFF';
+  ctx.font = `800 ${Math.max(7, Math.round(headerH * 0.62))}px "JetBrains Mono", monospace`;
   ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillText(
-    isShouting ? (shoutType === 'SIX' ? 'MAXIMUM 6!' : 'BOUNDARY 4!') : 'CRICKET OVAL',
+    isShouting
+      ? shoutType === 'SIX'
+        ? 'MAXIMUM 6!'
+        : shoutType === 'FOUR'
+        ? 'BOUNDARY 4!'
+        : 'GREAT RUN!'
+      : 'DOODLE CRICKET',
     w * 0.5,
-    sightY + 12.5
+    sightY + headerH * 0.46
   );
+
+  // Cricket Graphic Crest Print on the board: Crossed Bats + Stumps + Stitched Red Ball
+  const crestCx = w * 0.5;
+  const crestCy = sightY + headerH + (sightH - headerH - 5) * 0.52;
+  const cSc = Math.min(sightW / 128, (sightH - headerH) / 48);
+
+  ctx.save();
+  ctx.translate(crestCx, crestCy);
+  ctx.scale(cSc, cSc);
+
+  // Subtle green pitch badge circle behind emblem
+  ctx.fillStyle = 'rgba(16, 185, 129, 0.14)';
+  ctx.strokeStyle = 'rgba(16, 185, 129, 0.42)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(0, 0, 21, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Crossed Cricket Bats
+  [-0.58, 0.58].forEach((rot) => {
+    ctx.save();
+    ctx.rotate(rot);
+    // Handle
+    ctx.fillStyle = '#1E293B';
+    ctx.fillRect(-1.8, -21, 3.6, 9);
+    // Willow blade
+    ctx.fillStyle = '#FCD34D';
+    ctx.strokeStyle = '#B45309';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.roundRect(-4.2, -12, 8.4, 26, 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  // Three Center Stumps + Bails
+  [-5, 0, 5].forEach((sx) => {
+    ctx.strokeStyle = '#92400E';
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(sx, 13);
+    ctx.lineTo(sx, -9);
+    ctx.stroke();
+  });
+  ctx.strokeStyle = '#F59E0B';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-6, -9.5);
+  ctx.lineTo(6, -9.5);
+  ctx.stroke();
+
+  // Stitched Red Cricket Ball in the center foreground
+  ctx.fillStyle = '#DC2626';
+  ctx.strokeStyle = '#7F1D1D';
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.arc(0, 4, 6.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = '#FEF3C7';
+  ctx.lineWidth = 1.1;
+  ctx.setLineDash([2, 1.5]);
+  ctx.beginPath();
+  ctx.arc(0, 4, 5.2, -0.5, 2.6);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Side accent labels ("4" & "6" badges) when board is wide enough
+  if (sightW >= 100) {
+    ctx.fillStyle = '#0F172A';
+    ctx.font = '800 8px "Fredoka", sans-serif';
+    ctx.fillText('4', -34, 2);
+    ctx.fillText('6', 34, 2);
+  }
+
+  ctx.restore();
+  ctx.restore();
 
   // 4. Full Packed Crowd across all 5 tiers!
   const crowdColors = [
@@ -1034,31 +1158,27 @@ function drawBatterCricket(ctx: CanvasRenderingContext2D, s: RenderContextState,
   // Ground shadow
   ctx.fillStyle = 'rgba(0,0,0,0.22)';
   ctx.beginPath();
-  ctx.ellipse(0, 6, 30, 9, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 6, 24, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Cricket breathing bob
   const breathe = Math.sin(s.time * 4.5) * 1.6;
   const legStride = s.batterRunProgress > 0 ? Math.sin(s.time * 24) * 9 : 0;
 
-  // Back cricket legs (green folded hind legs)
-  ctx.strokeStyle = '#15803D';
-  ctx.lineWidth = 5;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
+  // Two cricket shoes underneath the pads
+  ctx.fillStyle = '#1E293B';
   ctx.beginPath();
-  ctx.moveTo(-8, -14);
-  ctx.lineTo(-22, -26 + legStride * 0.5);
-  ctx.lineTo(-15, 2 + legStride);
-  ctx.stroke();
+  ctx.roundRect(-10 - legStride * 0.35, 2, 11, 5, 2.5);
+  ctx.roundRect(2 + legStride * 0.35, 2, 11, 5, 2.5);
+  ctx.fill();
 
-  // White batting pads on front legs
+  // White batting pads on the two legs
   ctx.fillStyle = '#F8FAFC';
   ctx.strokeStyle = '#CBD5E1';
   ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.roundRect(-10 - legStride * 0.3, -18, 9, 22, 4);
-  ctx.roundRect(2 + legStride * 0.3, -18, 9, 22, 4);
+  ctx.roundRect(-10 - legStride * 0.35, -18, 9, 21, 4);
+  ctx.roundRect(2 + legStride * 0.35, -18, 9, 21, 4);
   ctx.fill();
   ctx.stroke();
 
@@ -1066,10 +1186,10 @@ function drawBatterCricket(ctx: CanvasRenderingContext2D, s: RenderContextState,
   ctx.strokeStyle = '#2563EB';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(-10 - legStride * 0.3, -10);
-  ctx.lineTo(-1 - legStride * 0.3, -10);
-  ctx.moveTo(2 + legStride * 0.3, -10);
-  ctx.lineTo(11 + legStride * 0.3, -10);
+  ctx.moveTo(-10 - legStride * 0.35, -10);
+  ctx.lineTo(-1 - legStride * 0.35, -10);
+  ctx.moveTo(2 + legStride * 0.35, -10);
+  ctx.lineTo(11 + legStride * 0.35, -10);
   ctx.stroke();
 
   // Cricket torso (vibrant lime-emerald jersey)
